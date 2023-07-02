@@ -29,18 +29,24 @@ var (
 	force                 bool       = false
 )
 
+var (
+	target      string
+	password    string
+	mode        string
+	showVersion bool
+)
+
 func main() {
-	var (
-		target   string
-		password string
-		mode     string
-		err      error
-	)
-	flag.StringVar(&target, "target", "", "target file or directory to encrypt/decrypt")
-	flag.StringVar(&mode, "mode", "", "operation mode (encrypt/decrypt)")
-	flag.IntVar(&workers, "workers", (pkg.GetCpuCores() - 2), "amount of workers used for operations")
-	flag.BoolVar(&force, "force", false, "force multiple encryption (default false)")
-	flag.Parse()
+	var err error
+	parseFlags()
+	if showVersion {
+		version, err := pkg.GetVersionInfo()
+		if err != nil {
+			fmt.Println("Clenc Version:", version)
+			os.Exit(0)
+		}
+		fmt.Println("Error showing version.")
+	}
 
 	if target == "" || mode == "" {
 		flag.Usage()
@@ -59,7 +65,7 @@ func main() {
 	fmt.Println("")
 	pkg.LogTime("time")
 	totalFiles = countFiles(target)
-	
+
 	if mode == "decrypt" {
 		err = processTarget(target, password, decryptFile)
 	} else if mode == "encrypt" {
@@ -211,4 +217,13 @@ func printProgress(filename string) {
 	defer mu.Unlock()
 	atomic.AddInt32(&doneFiles, 1)
 	fmt.Printf("\r\033[2KProcessing (%d/%d): %s", doneFiles, totalFiles, filename) // Clear the line before printing
+}
+
+func parseFlags() {
+	flag.StringVar(&target, "target", "", "target file or directory to encrypt/decrypt")
+	flag.StringVar(&mode, "mode", "", "operation mode (encrypt/decrypt)")
+	flag.IntVar(&workers, "workers", (pkg.GetCpuCores() - 2), "amount of workers used for operations")
+	flag.BoolVar(&force, "force", false, "force multiple encryption (default false)")
+	flag.BoolVar(&showVersion, "version", false, "print the version information")
+	flag.Parse()
 }

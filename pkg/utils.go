@@ -3,6 +3,8 @@ package pkg
 import (
 	"crypto/aes"
 	"crypto/cipher"
+	"encoding/json"
+	"fmt"
 	"io/fs"
 	"os"
 	"runtime"
@@ -70,4 +72,22 @@ func IsFileEncrypted(content []byte, identifier string, saltSize int) bool {
 	id := content[:len(identifier)]
 	stringId := string(id)
 	return stringId == identifier
+}
+
+func GetVersionInfo() (*string, error) {
+	type VersionInfo struct {
+		Version string `json:"version"`
+	}
+	data, err := os.ReadFile("./../version.json")
+	if err != nil {
+		fmt.Printf("Failed to read config file: %s\n", err.Error())
+		return nil, err
+	}
+	var config VersionInfo
+	err = json.Unmarshal(data, &config)
+	if err != nil {
+		fmt.Printf("Failed to parse config file: %s\n", err.Error())
+		return nil, err
+	}
+	return &config.Version, nil
 }
