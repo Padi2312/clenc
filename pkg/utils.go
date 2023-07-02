@@ -62,3 +62,12 @@ func WriteFileOriginal(path string, data []byte, info fs.FileInfo) error {
 func GetCpuCores() int {
 	return runtime.NumCPU()
 }
+
+func IsFileEncrypted(content []byte, identifier string, saltSize int) bool {
+	if len(content) < len(identifier)+saltSize {
+		return false
+	}
+	id := content[:len(identifier)]
+	stringId := string(id)
+	return stringId == identifier
+}

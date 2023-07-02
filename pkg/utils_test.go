@@ -91,3 +91,23 @@ func TestGetCpuCores(t *testing.T) {
 	cores := GetCpuCores()
 	assert.Greater(t, cores, 0, "GetCpuCores should return a positive value")
 }
+
+func TestIsFileEncryptedEncrypted(t *testing.T) {
+	identifier := "ENC"
+	salt := make([]byte, 12)
+	fakeContent := []byte{}
+	fakeContent = append(fakeContent, []byte(identifier)...)
+	fakeContent = append(fakeContent, salt...)
+	result := IsFileEncrypted(fakeContent, identifier, len(salt))
+	assert.Equal(t, result, true, "IsFileEncrypted should return true")
+}
+
+func TestIsFileEncryptedDecrypted(t *testing.T) {
+	identifier := "ENC"
+	salt := make([]byte, 12)
+	fakeContent := []byte{}
+	fakeContent = append(fakeContent, []byte("MÄH")...)
+	fakeContent = append(fakeContent, salt...)
+	result := IsFileEncrypted(fakeContent, identifier, len(salt))
+	assert.Equal(t, result, false, "IsFileEncrypted should return false")
+}

@@ -13,13 +13,13 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"golang.org/x/term"
-
 	"github.com/Padi2312/clenc/pkg"
+	"golang.org/x/term"
 )
 
 const (
-	saltSize = 16
+	saltSize   = 16
+	identifier = "ENCRYTPED"
 )
 
 var (
@@ -30,8 +30,6 @@ var (
 )
 
 func main() {
-	pkg.LogTime("time")
-
 	var (
 		target   string
 		password string
@@ -40,9 +38,14 @@ func main() {
 	)
 	flag.StringVar(&target, "target", "", "target file or directory to encrypt/decrypt")
 	flag.StringVar(&mode, "mode", "", "operation mode (encrypt/decrypt)")
-	flag.IntVar(&workers, "workers", pkg.GetCpuCores(), "amount of workers used for operations")
-	flag.BoolVar(&force, "force", false, "force multiple encryption")
+	flag.IntVar(&workers, "workers", (pkg.GetCpuCores() - 2), "amount of workers used for operations")
+	flag.BoolVar(&force, "force", false, "force multiple encryption (default false)")
 	flag.Parse()
+
+	if target == "" || mode == "" {
+		flag.Usage()
+		os.Exit(1)
+	}
 
 	fmt.Print("Enter password: ")
 	bytePassword, err := term.ReadPassword(int(os.Stdin.Fd()))
@@ -53,17 +56,10 @@ func main() {
 	if password == "" {
 		log.Fatalln("\nNo password given.")
 	}
-	// target = "./test.png"
-	// password = "test"
-	// mode = "encrypt"
-
-	if target == "" || password == "" || mode == "" {
-		flag.Usage()
-		os.Exit(1)
-	}
-
+	fmt.Println("")
+	pkg.LogTime("time")
 	totalFiles = countFiles(target)
-
+	
 	if mode == "decrypt" {
 		err = processTarget(target, password, decryptFile)
 	} else if mode == "encrypt" {
@@ -77,7 +73,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	log.Println("")
+	fmt.Println("")
 	pkg.LogTimeEnd("time")
 }
 
@@ -122,6 +118,12 @@ func encryptFile(filename string, password string) error {
 		return err
 	}
 
+	if pkg.IsFileEncrypted(content, identifier, saltSize) && !force {
+		log.Println("File is already encrypted.")
+		log.Println("In case of multiple encryption use '-force' flag")
+		return errors.New("file already encrypted")
+	}
+
 	salt := make([]byte, saltSize)
 	if _, err := io.ReadFull(rand.Reader, salt); err != nil {
 		return err
@@ -140,7 +142,8 @@ func encryptFile(filename string, password string) error {
 	}
 
 	encContent := aesgcm.Seal(nonce, nonce, content, nil)
-	err = pkg.WriteFileOriginal(filename, append(salt, encContent...), info)
+	encContent = setupEncryptedData(encContent, salt)
+	err = pkg.WriteFileOriginal(filename, encContent, info)
 	if err != nil {
 		return err
 	}
@@ -153,11 +156,12 @@ func decryptFile(filename string, password string) error {
 		return err
 	}
 
-	if len(content) < saltSize {
-		return errors.New("file too short to be encrypted")
+	if !pkg.IsFileEncrypted(content, identifier, saltSize) {
+		return errors.New("file is not encrypted")
 	}
 
-	salt, content := content[:saltSize], content[saltSize:]
+	idSaltLength := len(identifier) + saltSize
+	salt, content := content[len(identifier):idSaltLength], content[idSaltLength:]
 	key := pkg.GetArgonIdKey(password, salt, workers)
 	aesgcm, err := pkg.CreateAesGcm(key)
 	if err != nil {
@@ -171,7 +175,7 @@ func decryptFile(filename string, password string) error {
 	nonce, content := content[:aesgcm.NonceSize()], content[aesgcm.NonceSize():]
 	plainContent, err := aesgcm.Open(nil, nonce, content, nil)
 	if err != nil {
-		return errors.New("decryption failed, data may have been tampered with")
+		return err
 	}
 
 	err = pkg.WriteFileOriginal(filename, plainContent, info)
@@ -179,6 +183,16 @@ func decryptFile(filename string, password string) error {
 		return err
 	}
 	return nil
+}
+
+func setupEncryptedData(content []byte, salt []byte) []byte {
+	// First add identifier to content for checking encryption
+	var preparedContent []byte = []byte(identifier)
+	// Add salt to file content
+	preparedContent = append(preparedContent, salt...)
+	// Finally add encrypted file data
+	preparedContent = append(preparedContent, content...)
+	return preparedContent
 }
 
 func countFiles(root string) int32 {
