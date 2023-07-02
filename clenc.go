@@ -39,13 +39,14 @@ var (
 func main() {
 	var err error
 	parseFlags()
+	showVersion = true
 	if showVersion {
 		version, err := pkg.GetVersionInfo()
 		if err != nil {
-			fmt.Println("Clenc Version:", version)
-			os.Exit(0)
+			fmt.Println("Error showing version.", err)
 		}
-		fmt.Println("Error showing version.")
+		fmt.Println("Clenc Version:", *version)
+		os.Exit(0)
 	}
 
 	if target == "" || mode == "" {

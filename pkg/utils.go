@@ -78,7 +78,8 @@ func GetVersionInfo() (*string, error) {
 	type VersionInfo struct {
 		Version string `json:"version"`
 	}
-	data, err := os.ReadFile("./../version.json")
+	
+	data, err := os.ReadFile("version.json")
 	if err != nil {
 		fmt.Printf("Failed to read config file: %s\n", err.Error())
 		return nil, err

@@ -20,25 +20,25 @@ jobs:
           go-version: 1.20.5 # Replace with the Go version you are using
 
       - name: Build for Linux
-        run: go build -o clenc
+        run: go build -o clenc .
 
       - name: Build for Windows
-        run: GOOS=windows GOARCH=amd64 go build -o clenc.exe
+        run: GOOS=windows GOARCH=amd64 go build -o clenc.exe .
 
-  release:
-    name: Create Release
-    needs: build
-    runs-on: ubuntu-latest
+  # release:
+  #   name: Create Release
+  #   needs: build
+  #   runs-on: ubuntu-latest
 
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v2
+  #   steps:
+      # - name: Checkout repository
+      #   uses: actions/checkout@v2
 
       - name: Extract Version
         id: extract_version
         run: |
           version=$(jq -r '.version' version.json)
-          echo "::set-output name=version::$version"
+          echo "VERSION=${version}" >> $GITHUB_ENV
 
       - name: Create Release
         id: create_release
@@ -46,8 +46,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: v${{ steps.extract_version.outputs.version }}
-          release_name: Release v${{ steps.extract_version.outputs.version }}
+          tag_name: v${{ env.VERSION }}
+          release_name: Release v${{ env.VERSION }}
           body: |
             Release notes or description of the release.
           draft: false
