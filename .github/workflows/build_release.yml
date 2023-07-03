@@ -6,7 +6,7 @@ on:
       - main # Or specify the branch you want to trigger the workflow on
 
 jobs:
-  build:
+  build_release:
     name: Build
     runs-on: ubuntu-latest
 
@@ -20,25 +20,22 @@ jobs:
           go-version: 1.20.5 # Replace with the Go version you are using
 
       - name: Build for Linux
-        run: go build -o clenc .
+        run: go build -o clenc ./cmd/clenc/
 
       - name: Build for Windows
-        run: GOOS=windows GOARCH=amd64 go build -o clenc.exe .
-
-  # release:
-  #   name: Create Release
-  #   needs: build
-  #   runs-on: ubuntu-latest
-
-  #   steps:
-      # - name: Checkout repository
-      #   uses: actions/checkout@v2
+        run: GOOS=windows GOARCH=amd64 go build -o clenc.exe ./cmd/clenc/
 
       - name: Extract Version
         id: extract_version
         run: |
           version=$(jq -r '.version' version.json)
           echo "VERSION=${version}" >> $GITHUB_ENV
+
+      - name: Extract release message
+        id: extract_release_msg
+        run: |
+          releaseMsg=$(jq -r '.releaseMsg' version.json)
+          echo "RELEASE_MSG=${releaseMsg}" >> $GITHUB_ENV
 
       - name: Create Release
         id: create_release
@@ -49,7 +46,7 @@ jobs:
           tag_name: v${{ env.VERSION }}
           release_name: Release v${{ env.VERSION }}
           body: |
-            Release notes or description of the release.
+            ${{ env.RELEASE_MSG}}
           draft: false
           prerelease: false
 
